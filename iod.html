@@ -5,63 +5,171 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gianidel Climate Monitor</title>
 <style>
-  body { max-width: 600px; margin: 40px auto; padding: 0 20px; font-family: 'Times New Roman', Times, serif; color: #111; background: #fff; }
-  h1 { font-size: 30px; font-weight: normal; margin-bottom: 4px; }
+  body { font-family: 'Times New Roman', Times, serif; color: #111; background: #fff; }
+  h1 { font-size: 30px; font-weight: bold; margin-bottom: 4px; }
+  h2 { font-size: 15px; font-weight: bold; margin: 28px 0 10px; }
   hr { border: none; border-top: 1px solid #111; margin: 12px 0 24px; }
-  h2 { font-size: 14px; font-weight: normal; margin: 28px 0 10px; }
   td { padding: 5px 24px 5px 0; font-size: 14px; }
-  td.val { font-family: 'Courier New', monospace; font-size: 15px; }
+  td.val { font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; }
+  td.label { font-family: 'Times New Roman', Times, serif; }
+  td.period { font-size: 13px; color: #111; }
   .pos { color: #b00000; }
   .neg { color: #00008b; }
-  .foot { font-size: 11px; margin-top: 36px; padding-top: 12px; border-top: 1px solid #ccc; line-height: 1.8; }
+  .spark { font-family: 'Courier New', monospace; font-size: 20px; letter-spacing: 4px; }
 </style>
 </head>
 <body>
+
 <p style="font-size:13px;margin-bottom:4px;">Gianidel Climate Monitor</p>
 <h1>Indian Ocean Dipole</h1>
 <hr>
+
 <div id="out">Loading…</div>
+
 <script>
 fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gianidel_iod_data.json')
+  .then(r => r.json())
   .then(d => {
     const cw = d.currentWeek;
-    const fv = v => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2);
-    const cl = (v, t) => v == null ? '' : v > t ? 'pos' : v < -t ? 'neg' : '';
-    const row = (label, v, t) =>
-      `<tr><td>${label}</td><td class="val ${cl(v,t)}">${fv(v)}</td><td style="font-size:13px">°C</td></tr>`;
 
-    const dek = (d.dekadal || []).slice(-9);
-    const drows = dek.map(r =>
-      `<tr>
-        <td>${r.dekad}</td>
-        <td style="font-size:12px;color:#555">${r.start} – ${r.end}</td>
-        <td class="val ${cl(r.wtio,0.1)}">${fv(r.wtio)}</td>
+    function fv(v) {
+      if (v == null || isNaN(Number(v))) return '&mdash;';
+      return (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2);
+    }
+
+    function cl(v, t) {
+      if (v == null) return '';
+      return Number(v) > t ? 'pos' : Number(v) < -t ? 'neg' : '';
+    }
+
+    function fixDash(s) {
+      if (!s) return '&mdash;';
+      return String(s).replace(/–/g, '&ndash;').replace(/—/g, '&mdash;');
+    }
+
+    function sparkline(values) {
+      const chars = ['&#9601;','&#9602;','&#9603;','&#9604;','&#9605;','&#9606;','&#9607;','&#9608;'];
+      const nums  = values.map(v => Number(v)).filter(v => !isNaN(v));
+      if (!nums.length) return '&mdash;';
+      const mn = Math.min(...nums), mx = Math.max(...nums);
+      const range = mx - mn || 0.001;
+      return values.map(v => {
+        const n = Number(v);
+        if (isNaN(n)) return '·';
+        return chars[Math.min(7, Math.floor(((n - mn) / range) * 8))];
+      }).join('');
+    }
+
+    const dek   = (d.dekadal || []).slice(-9);
+    const last6 = (d.dekadal || []).slice(-6);
+
+    const spW = sparkline(last6.map(r => r.wtio));
+    const spS = sparkline(last6.map(r => r.setio));
+    const spD = sparkline(last6.map(r => r.dmi));
+
+    // Current dekad label
+    const today  = new Date();
+    const day    = today.getUTCDate();
+    const dekN   = day <= 10 ? 1 : day <= 20 ? 2 : 3;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    const curDek = months[today.getUTCMonth()] + '-D' + dekN;
+
+    const status = Number(cw.dmi) > 0.4  ? 'Positive IOD &mdash; DMI above +0.4 &deg;C' :
+                   Number(cw.dmi) < -0.4 ? 'Negative IOD &mdash; DMI below &minus;0.4 &deg;C' :
+                   'Neutral conditions';
+
+    const drows = dek.map(r => `
+      <tr>
+        <td class="label">${r.dekad}</td>
+        <td class="period">${fixDash(r.start)} &ndash; ${fixDash(r.end)}</td>
+        <td class="val ${cl(r.wtio, 0.1)}">${fv(r.wtio)}</td>
         <td class="val ${cl(r.setio,0.1)}">${fv(r.setio)}</td>
-        <td class="val ${cl(r.dmi,0.4)}">${fv(r.dmi)}</td>
+        <td class="val ${cl(r.dmi,  0.4)}" style="font-weight:bold">${fv(r.dmi)}</td>
       </tr>`).join('');
 
+    // Current incomplete dekad row
+    const curRow = `
+      <tr>
+        <td class="label">${curDek}</td>
+        <td class="period">in progress</td>
+        <td class="val">&mdash;</td>
+        <td class="val">&mdash;</td>
+        <td class="val">&mdash;</td>
+      </tr>`;
+
     document.getElementById('out').innerHTML = `
-      <p style="font-size:13px;margin-bottom:20px">${
-        Number(cw.dmi) > 0.4 ? 'Positive IOD — DMI above +0.4 °C' :
-        Number(cw.dmi) < -0.4 ? 'Negative IOD — DMI below −0.4 °C' :
-        'Neutral conditions'} &nbsp;·&nbsp; ${d.generated}</p>
-      <h2>Current week &nbsp;<span style="font-size:12px">${cw.dateRange}</span></h2>
-      <table>${row('WTIO',cw.wtio,0.1)}${row('SETIO',cw.setio,0.1)}${row('DMI',cw.dmi,0.4)}</table>
+
+      <p style="font-size:13px;margin-bottom:20px;">${status} &nbsp;&middot;&nbsp; ${d.generated}</p>
+
+      <h2>Current week</h2>
+      <p style="font-size:13px;margin-bottom:10px;">${fixDash(cw.dateRange)}</p>
+      <table>
+        <tr>
+          <td class="label">WTIO</td>
+          <td class="val ${cl(cw.wtio, 0.1)}">${fv(cw.wtio)}</td>
+          <td style="font-size:13px;">&deg;C</td>
+        </tr>
+        <tr>
+          <td class="label">SETIO</td>
+          <td class="val ${cl(cw.setio,0.1)}">${fv(cw.setio)}</td>
+          <td style="font-size:13px;">&deg;C</td>
+        </tr>
+        <tr>
+          <td class="label">DMI</td>
+          <td class="val ${cl(cw.dmi, 0.4)}" style="font-weight:bold">${fv(cw.dmi)}</td>
+          <td style="font-size:13px;">&deg;C</td>
+        </tr>
+        <tr>
+          <td class="label">SAG</td>
+          <td class="val">&mdash;</td>
+          <td></td>
+        </tr>
+      </table>
+
+      <h2>Six-dekad trend</h2>
+      <table>
+        <tr>
+          <td class="label">WTIO</td>
+          <td class="spark">${spW}</td>
+        </tr>
+        <tr>
+          <td class="label">SETIO</td>
+          <td class="spark">${spS}</td>
+        </tr>
+        <tr>
+          <td class="label">DMI</td>
+          <td class="spark">${spD}</td>
+        </tr>
+      </table>
+
       <h2>Dekadal history</h2>
-      <table style="width:100%">
-        <tr style="font-size:11px;border-bottom:1px solid #111">
-          <td>Dekad</td><td>Period</td>
-          <td class="val">WTIO</td><td class="val">SETIO</td><td class="val">DMI</td>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:2px solid #111;">
+          <td class="label" style="font-weight:bold;padding-bottom:6px;">Dekad</td>
+          <td class="label" style="font-weight:bold;padding-bottom:6px;">Period</td>
+          <td class="val" style="font-weight:bold;padding-bottom:6px;">WTIO</td>
+          <td class="val" style="font-weight:bold;padding-bottom:6px;">SETIO</td>
+          <td class="val" style="font-weight:bold;padding-bottom:6px;">DMI</td>
         </tr>
         ${drows}
+        ${curRow}
       </table>
-      <p class="foot">
+
+      <br>
+      <p style="font-size:12px;line-height:1.9;">
         Source: NOAA OISSTv2.1 / PSL THREDDS<br>
-        WTIO 50–70°E 10°S–10°N · SETIO 90–110°E 10°S–0°<br>
-        Anomaly baseline: 1971–2000
-      </p>`;
+        WTIO 50&ndash;70&deg;E 10&deg;S&ndash;10&deg;N &nbsp;&middot;&nbsp; SETIO 90&ndash;110&deg;E 10&deg;S&ndash;0&deg;<br>
+        Anomaly baseline: 1971&ndash;2000 (NOAA OISSTv2.1 native &middot; 1991&ndash;2020 recalibration pending)
+      </p>
+      <hr>
+      <p style="font-size:0.8em;">Copyright &copy; 2026 <b>Gianidel Ltd.</b> Internal document.</p>
+      <br>
+      <p><a href="index.html">&larr; Back</a></p>
+      <br>`;
   })
   .catch(e => document.getElementById('out').innerHTML = 'Error: ' + e.message);
 </script>
+
 </body>
 </html>

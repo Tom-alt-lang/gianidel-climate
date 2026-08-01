@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gianidel Climate Monitor</title>
@@ -18,7 +19,7 @@
   .t1-unit  { font-family: 'Times New Roman', Times, serif; font-size: 13px; color: #111; }
 
   /* Second table */
-.t2-label { font-family: 'Times New Roman', Times, serif; font-size: 14px; min-width: 72px; white-space: nowrap; }
+.t2-label { font-family: 'Times New Roman', Times, serif; font-size: 14px; }
   .t2-val   { font-family: 'Courier New', monospace; font-size: 14px; color: #111; font-weight: normal; }
   .t2-dmi   { font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; }
   .t2-head  { font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; padding-bottom: 6px; }
@@ -63,15 +64,16 @@
 
 <h2>Dekadal history</h2>
 <table style="width:100%;">
-  <thead>
-    <tr style="border-bottom:1px solid #111;">
-      <td class="t2-head">Dekad</td>
-      <td class="t2-head">Period</td>
-      <td class="t2-head">WTIO</td>
-      <td class="t2-head">SETIO</td>
-      <td class="t2-head">DMI</td>
-    </tr>
-  </thead>
+ <thead>
+  <tr>
+    <td class="t2-head">Dekad</td>
+    <td class="t2-head">Period</td>
+    <td class="t2-head">WTIO</td>
+    <td class="t2-head">SETIO</td>
+    <td class="t2-head">DMI</td>
+  </tr>
+</thead>
+<hr>
   <tbody id="dekTable"></tbody>
 </table>
 
@@ -79,7 +81,7 @@
 <p style="font-size:12px;line-height:1.9;">
   Source: NOAA OISSTv2.1 / PSL THREDDS<br>
   WTIO 50&ndash;70&deg;E 10&deg;S&ndash;10&deg;N &nbsp;&middot;&nbsp; SETIO 90&ndash;110&deg;E 10&deg;S&ndash;0&deg;<br>
-  Anomaly baseline: 1971&ndash;2000 (NOAA OISSTv2.1 native &middot; 1991&ndash;2020 recalibration pending)
+  Anomaly baseline: 1971&ndash;2000 (NOAA OISSTv2.1 native)
 </p>
 <hr>
 <p><a href="index.html">&larr; Back</a> &nbsp;&nbsp; <a href="charts.html">See chart</a>
@@ -145,7 +147,7 @@ fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gian
     for (const r of dek) {
       const isErr = r.wtio === 'ERR' || r.setio === 'ERR' || r.dmi === 'ERR';
       rows += `<tr>
-        <td class="t2-label">${r.dekad}</td>
+       <td class="t2-label" style="white-space:nowrap;padding-right:16px;">${r.dekad}</td>
         <td class="t2-label" style="font-size:13px;">${fmtDate(r.start)} &ndash; ${fmtDate(r.end)}</td>
         <td class="t2-val">${isErr ? '&mdash;' : fv(r.wtio)}</td>
         <td class="t2-val">${isErr ? '&mdash;' : fv(r.setio)}</td>
@@ -153,7 +155,7 @@ fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gian
       </tr>`;
     }
     rows += `<tr>
-      <td class="t2-label">${curDek}</td>
+      <td class="t2-label" style="white-space:nowrap;padding-right:16px;">${curDek}</td>
       <td class="t2-label" style="font-size:13px;">in progress</td>
       <td class="t2-val">&mdash;</td>
       <td class="t2-val">&mdash;</td>

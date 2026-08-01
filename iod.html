@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gianidel Climate Monitor</title>
+<style>
+  body { max-width: 600px; margin: 40px auto; padding: 0 20px; font-family: 'Times New Roman', Times, serif; color: #111; background: #fff; }
+  h1 { font-size: 30px; font-weight: normal; margin-bottom: 4px; }
+  hr { border: none; border-top: 1px solid #111; margin: 12px 0 24px; }
+  h2 { font-size: 14px; font-weight: normal; margin: 28px 0 10px; }
+  td { padding: 5px 24px 5px 0; font-size: 14px; }
+  td.val { font-family: 'Courier New', monospace; font-size: 15px; }
+  .pos { color: #b00000; }
+  .neg { color: #00008b; }
+  .foot { font-size: 11px; margin-top: 36px; padding-top: 12px; border-top: 1px solid #ccc; line-height: 1.8; }
+</style>
+</head>
+<body>
+<p style="font-size:13px;margin-bottom:4px;">Gianidel Climate Monitor</p>
+<h1>Indian Ocean Dipole</h1>
+<hr>
+<div id="out">Loading…</div>
+<script>
+fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gianidel_iod_data.json')
+  .then(d => {
+    const cw = d.currentWeek;
+    const fv = v => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2);
+    const cl = (v, t) => v == null ? '' : v > t ? 'pos' : v < -t ? 'neg' : '';
+    const row = (label, v, t) =>
+      `<tr><td>${label}</td><td class="val ${cl(v,t)}">${fv(v)}</td><td style="font-size:13px">°C</td></tr>`;
+
+    const dek = (d.dekadal || []).slice(-9);
+    const drows = dek.map(r =>
+      `<tr>
+        <td>${r.dekad}</td>
+        <td style="font-size:12px;color:#555">${r.start} – ${r.end}</td>
+        <td class="val ${cl(r.wtio,0.1)}">${fv(r.wtio)}</td>
+        <td class="val ${cl(r.setio,0.1)}">${fv(r.setio)}</td>
+        <td class="val ${cl(r.dmi,0.4)}">${fv(r.dmi)}</td>
+      </tr>`).join('');
+
+    document.getElementById('out').innerHTML = `
+      <p style="font-size:13px;margin-bottom:20px">${
+        Number(cw.dmi) > 0.4 ? 'Positive IOD — DMI above +0.4 °C' :
+        Number(cw.dmi) < -0.4 ? 'Negative IOD — DMI below −0.4 °C' :
+        'Neutral conditions'} &nbsp;·&nbsp; ${d.generated}</p>
+      <h2>Current week &nbsp;<span style="font-size:12px">${cw.dateRange}</span></h2>
+      <table>${row('WTIO',cw.wtio,0.1)}${row('SETIO',cw.setio,0.1)}${row('DMI',cw.dmi,0.4)}</table>
+      <h2>Dekadal history</h2>
+      <table style="width:100%">
+        <tr style="font-size:11px;border-bottom:1px solid #111">
+          <td>Dekad</td><td>Period</td>
+          <td class="val">WTIO</td><td class="val">SETIO</td><td class="val">DMI</td>
+        </tr>
+        ${drows}
+      </table>
+      <p class="foot">
+        Source: NOAA OISSTv2.1 / PSL THREDDS<br>
+        WTIO 50–70°E 10°S–10°N · SETIO 90–110°E 10°S–0°<br>
+        Anomaly baseline: 1971–2000
+      </p>`;
+  })
+  .catch(e => document.getElementById('out').innerHTML = 'Error: ' + e.message);
+</script>
+</body>
+</html>

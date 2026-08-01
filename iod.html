@@ -9,13 +9,23 @@
   h1 { font-size: 30px; font-weight: bold; margin-bottom: 4px; }
   h2 { font-size: 15px; font-weight: bold; margin: 28px 0 10px; }
   hr { border: none; border-top: 1px solid #111; margin: 12px 0 24px; }
+  table { border-collapse: collapse; }
   td { padding: 5px 24px 5px 0; font-size: 14px; }
-  td.val { font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; }
-  td.label { font-family: 'Times New Roman', Times, serif; }
-  td.period { font-size: 13px; color: #111; }
+
+  /* First table */
+  .t1-label { font-family: 'Times New Roman', Times, serif; font-size: 14px; }
+  .t1-val   { font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; color: #111; }
+  .t1-unit  { font-family: 'Times New Roman', Times, serif; font-size: 13px; color: #111; }
+
+  /* Second table */
+  .t2-label { font-family: 'Times New Roman', Times, serif; font-size: 14px; }
+  .t2-val   { font-family: 'Courier New', monospace; font-size: 14px; color: #111; font-weight: normal; }
+  .t2-dmi   { font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; }
+  .t2-head  { font-family: 'Times New Roman', Times, serif; font-size: 14px; font-weight: bold; padding-bottom: 6px; }
+
+  /* DMI color */
   .pos { color: #b00000; }
   .neg { color: #00008b; }
-  .spark { font-family: 'Courier New', monospace; font-size: 20px; letter-spacing: 4px; }
 </style>
 </head>
 <body>
@@ -24,50 +34,105 @@
 <h1>Indian Ocean Dipole</h1>
 <hr>
 
-<div id="out">Loading…</div>
+<p id="status" style="font-size:13px;margin-bottom:20px;"></p>
+
+<h2>Current week</h2>
+<p id="dateRange" style="font-size:13px;margin-bottom:10px;"></p>
+<table>
+  <tr>
+    <td class="t1-label">WTIO</td>
+    <td class="t1-val" id="wtio"></td>
+    <td class="t1-unit">&deg;C</td>
+  </tr>
+  <tr>
+    <td class="t1-label">SETIO</td>
+    <td class="t1-val" id="setio"></td>
+    <td class="t1-unit">&deg;C</td>
+  </tr>
+  <tr>
+    <td class="t1-label">DMI</td>
+    <td class="t1-val" id="dmi"></td>
+    <td class="t1-unit">&deg;C</td>
+  </tr>
+  <tr>
+    <td class="t1-label">SAG</td>
+    <td class="t1-val">&mdash;</td>
+    <td class="t1-unit"></td>
+  </tr>
+</table>
+
+<h2>Dekadal history</h2>
+<table style="width:100%;">
+  <thead>
+    <tr style="border-bottom:1px solid #111;">
+      <td class="t2-head">Dekad</td>
+      <td class="t2-head">Period</td>
+      <td class="t2-head">WTIO</td>
+      <td class="t2-head">SETIO</td>
+      <td class="t2-head">DMI</td>
+    </tr>
+  </thead>
+  <tbody id="dekTable"></tbody>
+</table>
+
+<br>
+<p style="font-size:12px;line-height:1.9;">
+  Source: NOAA OISSTv2.1 / PSL THREDDS<br>
+  WTIO 50&ndash;70&deg;E 10&deg;S&ndash;10&deg;N &nbsp;&middot;&nbsp; SETIO 90&ndash;110&deg;E 10&deg;S&ndash;0&deg;<br>
+  Anomaly baseline: 1971&ndash;2000 (NOAA OISSTv2.1 native &middot; 1991&ndash;2020 recalibration pending)
+</p>
+<hr>
+<p><a href="index.html">&larr; Back</a> &nbsp;&nbsp; <button onclick="alert('Chart coming soon.')">See chart</button></p>
+<br>
+<p style="font-size:0.8em;">Copyright &copy; 2026 <b>Gianidel Ltd.</b> Internal document.</p>
+<br>
 
 <script>
+function fv(v) {
+  if (v == null || isNaN(Number(v))) return '&mdash;';
+  return (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2);
+}
+
+function dmiClass(v) {
+  if (v == null || isNaN(Number(v))) return 't2-dmi';
+  return Number(v) > 0.4 ? 't2-dmi pos' : Number(v) < -0.4 ? 't2-dmi neg' : 't2-dmi';
+}
+
+function fmtDate(s) {
+  if (!s) return '&mdash;';
+  const parts = String(s).trim().split(' ');
+  if (parts.length === 3) return parts[0] + '-' + parts[1] + '-' + parts[2].slice(2);
+  return s;
+}
+
 fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gianidel_iod_data.json')
   .then(r => r.json())
   .then(d => {
-    const cw = d.currentWeek;
+    const cw  = d.currentWeek;
+    const dmi = Number(cw.dmi);
 
-    function fv(v) {
-      if (v == null || isNaN(Number(v))) return '&mdash;';
-      return (Number(v) > 0 ? '+' : '') + Number(v).toFixed(2);
-    }
+    // Status line
+    document.getElementById('status').innerHTML =
+      (dmi > 0.4  ? 'Positive IOD &mdash; DMI above +0.4 &deg;C' :
+       dmi < -0.4 ? 'Negative IOD &mdash; DMI below &minus;0.4 &deg;C' :
+       'Neutral conditions') + ' &nbsp;&middot;&nbsp; ' + d.generated;
 
-    function cl(v, t) {
-      if (v == null) return '';
-      return Number(v) > t ? 'pos' : Number(v) < -t ? 'neg' : '';
-    }
+    // Date range
+    document.getElementById('dateRange').innerHTML =
+      String(cw.dateRange).replace(/–/g, '&ndash;').replace(/\?/g, '&ndash;');
 
-    function fixDash(s) {
-      if (!s) return '&mdash;';
-      return String(s).replace(/–/g, '&ndash;').replace(/—/g, '&mdash;');
-    }
+    // First table values
+    document.getElementById('wtio').innerHTML  = fv(cw.wtio);
+    document.getElementById('setio').innerHTML = fv(cw.setio);
 
-    function sparkline(values) {
-      const chars = ['&#9601;','&#9602;','&#9603;','&#9604;','&#9605;','&#9606;','&#9607;','&#9608;'];
-      const nums  = values.map(v => Number(v)).filter(v => !isNaN(v));
-      if (!nums.length) return '&mdash;';
-      const mn = Math.min(...nums), mx = Math.max(...nums);
-      const range = mx - mn || 0.001;
-      return values.map(v => {
-        const n = Number(v);
-        if (isNaN(n)) return '·';
-        return chars[Math.min(7, Math.floor(((n - mn) / range) * 8))];
-      }).join('');
-    }
+    // DMI in first table — bold, colored, Times New Roman
+    const dmiEl = document.getElementById('dmi');
+    dmiEl.innerHTML = fv(cw.dmi);
+    if (dmi > 0.4)       dmiEl.classList.add('pos');
+    else if (dmi < -0.4) dmiEl.classList.add('neg');
 
-    const dek   = (d.dekadal || []).slice(-9);
-    const last6 = (d.dekadal || []).slice(-6);
-
-    const spW = sparkline(last6.map(r => r.wtio));
-    const spS = sparkline(last6.map(r => r.setio));
-    const spD = sparkline(last6.map(r => r.dmi));
-
-    // Current dekad label
+    // Dekadal table
+    const dek    = (d.dekadal || []).slice(-9);
     const today  = new Date();
     const day    = today.getUTCDate();
     const dekN   = day <= 10 ? 1 : day <= 20 ? 2 : 3;
@@ -75,100 +140,30 @@ fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gian
                     'Jul','Aug','Sep','Oct','Nov','Dec'];
     const curDek = months[today.getUTCMonth()] + '-D' + dekN;
 
-    const status = Number(cw.dmi) > 0.4  ? 'Positive IOD &mdash; DMI above +0.4 &deg;C' :
-                   Number(cw.dmi) < -0.4 ? 'Negative IOD &mdash; DMI below &minus;0.4 &deg;C' :
-                   'Neutral conditions';
-
-    const drows = dek.map(r => `
-      <tr>
-        <td class="label">${r.dekad}</td>
-        <td class="period">${fixDash(r.start)} &ndash; ${fixDash(r.end)}</td>
-        <td class="val ${cl(r.wtio, 0.1)}">${fv(r.wtio)}</td>
-        <td class="val ${cl(r.setio,0.1)}">${fv(r.setio)}</td>
-        <td class="val ${cl(r.dmi,  0.4)}" style="font-weight:bold">${fv(r.dmi)}</td>
-      </tr>`).join('');
-
-    // Current incomplete dekad row
-    const curRow = `
-      <tr>
-        <td class="label">${curDek}</td>
-        <td class="period">in progress</td>
-        <td class="val">&mdash;</td>
-        <td class="val">&mdash;</td>
-        <td class="val">&mdash;</td>
+    let rows = '';
+    for (const r of dek) {
+      const isErr = r.wtio === 'ERR' || r.setio === 'ERR' || r.dmi === 'ERR';
+      rows += `<tr>
+        <td class="t2-label">${r.dekad}</td>
+        <td class="t2-label" style="font-size:13px;">${fmtDate(r.start)} &ndash; ${fmtDate(r.end)}</td>
+        <td class="t2-val">${isErr ? '&mdash;' : fv(r.wtio)}</td>
+        <td class="t2-val">${isErr ? '&mdash;' : fv(r.setio)}</td>
+        <td class="${isErr ? 't2-dmi' : dmiClass(r.dmi)}">${isErr ? '&mdash;' : fv(r.dmi)}</td>
       </tr>`;
+    }
+    rows += `<tr>
+      <td class="t2-label">${curDek}</td>
+      <td class="t2-label" style="font-size:13px;">in progress</td>
+      <td class="t2-val">&mdash;</td>
+      <td class="t2-val">&mdash;</td>
+      <td class="t2-dmi">&mdash;</td>
+    </tr>`;
 
-    document.getElementById('out').innerHTML = `
-
-      <p style="font-size:13px;margin-bottom:20px;">${status} &nbsp;&middot;&nbsp; ${d.generated}</p>
-
-      <h2>Current week</h2>
-      <p style="font-size:13px;margin-bottom:10px;">${fixDash(cw.dateRange)}</p>
-      <table>
-        <tr>
-          <td class="label">WTIO</td>
-          <td class="val ${cl(cw.wtio, 0.1)}">${fv(cw.wtio)}</td>
-          <td style="font-size:13px;">&deg;C</td>
-        </tr>
-        <tr>
-          <td class="label">SETIO</td>
-          <td class="val ${cl(cw.setio,0.1)}">${fv(cw.setio)}</td>
-          <td style="font-size:13px;">&deg;C</td>
-        </tr>
-        <tr>
-          <td class="label">DMI</td>
-          <td class="val ${cl(cw.dmi, 0.4)}" style="font-weight:bold">${fv(cw.dmi)}</td>
-          <td style="font-size:13px;">&deg;C</td>
-        </tr>
-        <tr>
-          <td class="label">SAG</td>
-          <td class="val">&mdash;</td>
-          <td></td>
-        </tr>
-      </table>
-
-      <h2>Six-dekad trend</h2>
-      <table>
-        <tr>
-          <td class="label">WTIO</td>
-          <td class="spark">${spW}</td>
-        </tr>
-        <tr>
-          <td class="label">SETIO</td>
-          <td class="spark">${spS}</td>
-        </tr>
-        <tr>
-          <td class="label">DMI</td>
-          <td class="spark">${spD}</td>
-        </tr>
-      </table>
-
-      <h2>Dekadal history</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr style="border-bottom:2px solid #111;">
-          <td class="label" style="font-weight:bold;padding-bottom:6px;">Dekad</td>
-          <td class="label" style="font-weight:bold;padding-bottom:6px;">Period</td>
-          <td class="val" style="font-weight:bold;padding-bottom:6px;">WTIO</td>
-          <td class="val" style="font-weight:bold;padding-bottom:6px;">SETIO</td>
-          <td class="val" style="font-weight:bold;padding-bottom:6px;">DMI</td>
-        </tr>
-        ${drows}
-        ${curRow}
-      </table>
-
-      <br>
-      <p style="font-size:12px;line-height:1.9;">
-        Source: NOAA OISSTv2.1 / PSL THREDDS<br>
-        WTIO 50&ndash;70&deg;E 10&deg;S&ndash;10&deg;N &nbsp;&middot;&nbsp; SETIO 90&ndash;110&deg;E 10&deg;S&ndash;0&deg;<br>
-        Anomaly baseline: 1971&ndash;2000 (NOAA OISSTv2.1 native &middot; 1991&ndash;2020 recalibration pending)
-      </p>
-      <hr>
-      <p style="font-size:0.8em;">Copyright &copy; 2026 <b>Gianidel Ltd.</b> Internal document.</p>
-      <br>
-      <p><a href="index.html">&larr; Back</a></p>
-      <br>`;
+    document.getElementById('dekTable').innerHTML = rows;
   })
-  .catch(e => document.getElementById('out').innerHTML = 'Error: ' + e.message);
+  .catch(e => {
+    document.getElementById('status').innerHTML = 'Error: ' + e.message;
+  });
 </script>
 
 </body>

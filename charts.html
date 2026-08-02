@@ -8,30 +8,31 @@
 <style>
   body { font-family: 'Times New Roman', Times, serif; background: #fff; color: #111; padding: 20px; max-width: 860px; margin: 0 auto; }
   h1 { font-size: 22px; font-weight: bold; text-align: center; margin-bottom: 4px; }
-  p.sub { text-align: center; font-size: 12px; margin-bottom: 32px; }
-  .chart-wrap { margin-bottom: 40px; }
-.chart-title { font-size: 13px; font-weight: bold; margin-bottom: 6px; font-family: Arial; }
+  p.sub { text-align: center; font-size: 12px; margin-bottom: 32px; font-family: 'Times New Roman', Times, serif; }
+  .chart-wrap { margin-bottom: 48px; }
+  .chart-title { font-size: 13px; font-weight: bold; margin-bottom: 6px; font-family: 'Times New Roman', Times, serif; }
   canvas { width: 100% !important; }
+  hr { border: none; border-top: 1px solid #111; margin: 12px 0 24px; }
 </style>
 </head>
 <body>
 
 <h1>Indian Ocean Dipole Mode Indices</h1>
-<p class="sub">OISSTv2.1, 1971&ndash;2000 Climatology &nbsp;&middot;&nbsp; Dekadal means</p>
+<p class="sub">OISSTv2.1 &nbsp;&middot;&nbsp; 1971&ndash;2000 climatology &nbsp;&middot;&nbsp; Dekadal means</p>
 
 <div class="chart-wrap">
-<p class="chart-title" style="font-family:Arial;">SETIO [90&ndash;110E, 10S&ndash;0]</p>
-  <canvas id="chartSETIO" height="140"></canvas>
+  <p class="chart-title">SETIO &nbsp;[90&ndash;110&deg;E, 10&deg;S&ndash;0&deg;]</p>
+  <canvas id="chartSETIO" height="120"></canvas>
 </div>
 
 <div class="chart-wrap">
-  <p class="chart-title" style="font-family:Arial;">WTIO [50&ndash;70E, 10S&ndash;10N]</p>
-  <canvas id="chartWTIO" height="140"></canvas>
+  <p class="chart-title">WTIO &nbsp;[50&ndash;70&deg;E, 10&deg;S&ndash;10&deg;N]</p>
+  <canvas id="chartWTIO" height="120"></canvas>
 </div>
 
 <div class="chart-wrap">
-  <p class="chart-title" style="font-family:Arial;">DMI = WTIO &minus; SETIO</p>
-  <canvas id="chartDMI" height="140"></canvas>
+  <p class="chart-title">DMI &nbsp;= WTIO &minus; SETIO</p>
+  <canvas id="chartDMI" height="120"></canvas>
 </div>
 
 <hr>
@@ -43,46 +44,60 @@
 fetch('https://raw.githubusercontent.com/Tom-alt-lang/gianidel-climate/main/gianidel_iod_data.json')
   .then(r => r.json())
   .then(d => {
-    const dek   = (d.dekadal || []).slice(3);
+    const dek    = (d.dekadal || []).slice(3); // trim first 3 to get ~8 months
     const labels = dek.map(r => r.dekad);
-    const wtio   = dek.map(r => isNaN(Number(r.wtio))  ? 0 : Number(r.wtio));
-    const setio  = dek.map(r => isNaN(Number(r.setio)) ? 0 : Number(r.setio));
-    const dmi    = dek.map(r => isNaN(Number(r.dmi))   ? 0 : Number(r.dmi));
 
-    function barColors(values) {
-      return values.map(v => v >= 0 ? '#f73e40' : '#1b3dfc');
-    }
+    function toNum(v) { return isNaN(Number(v)) ? 0 : Number(v); }
 
-const TNR    = { family: 'Arial', size: 11 };
-const TNRtitle = { family: 'Arial', size: 11 };
+    const wtio  = dek.map(r => toNum(r.wtio));
+    const setio = dek.map(r => toNum(r.setio));
+    const dmi   = dek.map(r => toNum(r.dmi));
 
+    const TNR = { family: 'Arial', size: 11 };
 
-    // Build x-axis tick labels — show month name only on D1, blank on D2/D3
+    // X-axis tick: show month name only on D1
     function xLabel(label) {
-      if (!label) return '';
-      if (label.endsWith('-D1')) return label.replace('-D1', '');
-      return '';
+      return label && label.endsWith('-D1') ? label.replace('-D1', '') : '';
     }
 
-    // Vertical grid — only on D1 (month boundary)
-    function gridColorFn(ctx) {
+    // Grid only on month boundaries (D1)
+    function gridColor(ctx) {
       const label = labels[ctx.index];
       return label && label.endsWith('-D1') ? '#cccccc' : 'transparent';
     }
 
+    // Shaded fill datasets — positive (red) and negative (blue)
+    function makeShadeDatasets(values) {
+      const posData = values.map(v => v > 0 ? v : 0);
+      const negData = values.map(v => v < 0 ? v : 0);
+      return [
+        {
+          data: posData,
+          fill: 'origin',
+          backgroundColor: 'rgba(176, 0, 0, 0.25)',
+          borderColor:     'rgba(176, 0, 0, 0.8)',
+          borderWidth:     1.5,
+          pointRadius:     0,
+          tension:         0.3
+        },
+        {
+          data: negData,
+          fill: 'origin',
+          backgroundColor: 'rgba(0, 0, 139, 0.25)',
+          borderColor:     'rgba(0, 0, 139, 0.8)',
+          borderWidth:     1.5,
+          pointRadius:     0,
+          tension:         0.3
+        }
+      ];
+    }
+
     function makeChart(id, values, yMin, yMax) {
-      const ctx = document.getElementById(id).getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
+      new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'line',
         data: {
-          labels: labels,
-          datasets: [{
-            data: values,
-            backgroundColor: barColors(values),
-            borderWidth: 0,
-            barPercentage: 0.85,
-            categoryPercentage: 0.9
-          }]
+          labels:   labels,
+          datasets: makeShadeDatasets(values)
         },
         options: {
           responsive: true,
@@ -96,29 +111,27 @@ const TNRtitle = { family: 'Arial', size: 11 };
           },
           scales: {
             x: {
-              grid: {
-                color: ctx => gridColorFn(ctx),
-              },
+              grid:  { color: ctx => gridColor(ctx) },
               ticks: {
-  font: TNR,
-  maxRotation: 0,
-  minRotation: 0,
-  autoSkip: false,
-  callback: (val, idx) => xLabel(labels[idx])
-},
+                font:        TNR,
+                maxRotation: 0,
+                minRotation: 0,
+                autoSkip:    false,
+                callback:    (val, idx) => xLabel(labels[idx])
+              },
               border: { color: '#111' }
             },
             y: {
-              min: yMin,
-              max: yMax,
-              grid: { color: '#cccccc' },
+              min:  yMin,
+              max:  yMax,
+              grid: { color: '#dddddd' },
               ticks: { font: TNR },
               border: { color: '#111' },
               title: {
                 display: true,
-                text: 'Degree C',
-                font: TNR,
-                color: '#111'
+                text:    'Anomaly (°C)',
+                font:    TNR,
+                color:   '#111'
               }
             }
           },
@@ -131,10 +144,10 @@ const TNRtitle = { family: 'Arial', size: 11 };
             const yZero = y.getPixelForValue(0);
             ctx.save();
             ctx.beginPath();
-            ctx.moveTo(x.left, yZero);
+            ctx.moveTo(x.left,  yZero);
             ctx.lineTo(x.right, yZero);
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 1;
+            ctx.lineWidth   = 1;
             ctx.stroke();
             ctx.restore();
           }
@@ -142,9 +155,9 @@ const TNRtitle = { family: 'Arial', size: 11 };
       });
     }
 
-    makeChart('chartSETIO', setio, -1, 1.5);
-    makeChart('chartWTIO',  wtio,  -1, 1.5);
-    makeChart('chartDMI',   dmi,   -1.5, 2);
+    makeChart('chartSETIO', setio, -1.5,  2.0);
+    makeChart('chartWTIO',  wtio,  -1.5,  2.0);
+    makeChart('chartDMI',   dmi,   -1.5,  1.5);
   })
   .catch(e => document.body.innerHTML += '<p>Error: ' + e.message + '</p>');
 </script>

@@ -1,12 +1,12 @@
 {
-  "generated": "09 Sep 2026 03:08 UTC",
+  "generated": "10 Sep 2026 03:08 UTC",
   "climatology": "1971-2000 (NOAA OISSTv2.1)",
   "source": "NOAA OISSTv2.1 / PSL THREDDS",
   "currentWeek": {
-    "dateRange": "25 Aug 2026 ? 31 Aug 2026",
-    "wtio": 1.01,
-    "setio": 0.6,
-    "dmi": 0.41
+    "dateRange": "26 Aug 2026 ? 01 Sep 2026",
+    "wtio": 1.09,
+    "setio": 0.58,
+    "dmi": 0.51
   },
   "dekadal": [
     {
